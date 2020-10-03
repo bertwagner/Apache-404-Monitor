@@ -1,15 +1,20 @@
 import smtplib
 import os
+import subprocess
+
+FROM = os.environ["apache_404_monitor_email_from"]
+FROM_PASSWORD = os.environ["apache_404_monitor_password"]
+TO = [os.environ["apache_404_monitor_email_to"]]
 
 def GetLog():
-    pass
+    # Assumes SSH keys set for passwordless login
+    output = subprocess.Popen('cmd /k "C:\\Windows\\System32\\OpenSSH\\ssh.exe bertwagner@bertwagner.com"', shell=True, stdout=subprocess.PIPE).stdout.read()
+    print(output)
 
 def FilterUninteresting404s():
     pass
 
 def SendEmail():
-    FROM = os.environ["apache_404_monitor_email_from"]
-    TO = [os.environ["apache_404_monitor_email_to"]]
     SUBJECT = 'test subject!'
     TEXT = 'this is the body of hte message!'
 
@@ -19,20 +24,14 @@ def SendEmail():
     server = smtplib.SMTP("smtp.gmail.com", 587)
     server.ehlo()
     server.starttls()
-    server.login(FROM, os.environ["apache_404_monitor_password"])
+    server.login(FROM, FROM_PASSWORD)
     server.sendmail(FROM, TO, message)
     server.close()
     print('successfully sent the mail')
 
 
 if __name__ == "__main__":
-    
-    # Need to set 3 environment variables before running
-    # apache_404_monitor_email_from
-    # apache_404_monitor_email_password
-    # apache_404_monitor_email_to
-
     GetLog()
-    FilterUninteresting404s()
-    SendEmail()
+    #FilterUninteresting404s()
+    #SendEmail()
     
