@@ -6,13 +6,19 @@ FROM = os.environ["apache_404_monitor_email_from"]
 FROM_PASSWORD = os.environ["apache_404_monitor_password"]
 TO = [os.environ["apache_404_monitor_email_to"]]
 
-def GetLog():
-    # Assumes SSH keys set for passwordless login
-    output = subprocess.Popen('cmd /k "C:\\Windows\\System32\\OpenSSH\\ssh.exe bertwagner@bertwagner.com"', shell=True, stdout=subprocess.PIPE).stdout.read()
-    print(output)
+BLOCKLIST = []
+
 
 def FilterUninteresting404s():
-    pass
+
+    list_of_404s = []
+
+    with open("access.log") as f:
+        for line in f:
+            if "404" in line:
+                list_of_404s.append(line)
+    
+    print(list_of_404s)
 
 def SendEmail():
     SUBJECT = 'test subject!'
@@ -31,7 +37,7 @@ def SendEmail():
 
 
 if __name__ == "__main__":
-    GetLog()
-    #FilterUninteresting404s()
-    #SendEmail()
+    FilterUninteresting404s()
+    SendEmail()
+
     
