@@ -1,4 +1,4 @@
 .venv*
 .vscode/
 access.log
-blocklist.json
+exclusion_list.pkl
