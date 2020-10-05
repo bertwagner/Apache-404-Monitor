@@ -54,6 +54,7 @@ def FilterNew404s(exclusion_list):
     logs_404s = logs[logs["status_code"] == "404"]
 
     try:
+        # exclude entries already previously emailed
         new_logs_404s = logs_404s[~logs_404s.url.isin(exclusion_list.url)]
     except:
         new_logs_404s = logs_404s
