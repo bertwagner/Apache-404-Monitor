@@ -5,6 +5,8 @@ import re
 import json
 import pandas as pd
 import numpy as np
+from datetime import datetime
+from datetime import timedelta 
 
 FROM = os.environ["apache_404_monitor_email_from"]
 FROM_PASSWORD = os.environ["apache_404_monitor_password"]
@@ -33,6 +35,9 @@ class ApachLogEntry(object):
             'user_agent':self.user_agent,
             'raw':self.raw
         }
+def DownloadAccessLog():
+    yesterday = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+    subprocess.run(["scp", f"bertwagner@bertwagner.com:~/logs/bertwagner.com/https/access.log.{yesterday}", "./access.log"])
 
 def ReadInExclusionList():
     try:
@@ -47,7 +52,10 @@ def FilterNew404s(exclusion_list):
 
     with open("access.log") as f:
         for line in f:
-            parsed_entries.append(ApachLogEntry(line))
+            try:
+                parsed_entries.append(ApachLogEntry(line))
+            except:
+                print("Error occurred while running log parsing regex")
             
     logs = pd.DataFrame.from_records([s.to_dict() for s in parsed_entries])
     
@@ -60,7 +68,6 @@ def FilterNew404s(exclusion_list):
         new_logs_404s = logs_404s
 
     return new_logs_404s
-
 
 def SendEmail(logs):
     SUBJECT = 'Daily BertWagner.com 404s'
@@ -86,6 +93,7 @@ def WriteToExclusionList(exclusion_list,new_entries):
     new_exclusion_list.to_pickle("exclusion_list.pkl")
 
 if __name__ == "__main__":
+    DownloadAccessLog()
     exclusion_list = ReadInExclusionList()
     logs = FilterNew404s(exclusion_list)
     if len(logs.index) > 0:
