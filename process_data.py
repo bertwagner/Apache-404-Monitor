@@ -35,9 +35,8 @@ class ApachLogEntry(object):
             'user_agent':self.user_agent,
             'raw':self.raw
         }
-def DownloadAccessLog():
-    yesterday = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
-    subprocess.run(["scp", f"bertwagner@bertwagner.com:~/logs/bertwagner.com/https/access.log.{yesterday}", "./access.log"])
+def DownloadAccessLog(log_date):
+    subprocess.run(["scp", f"bertwagner@bertwagner.com:~/logs/bertwagner.com/https/access.log.{log_date}", "./access.log"])
 
 def ReadInExclusionList():
     try:
@@ -55,6 +54,7 @@ def FilterNew404s(exclusion_list):
             try:
                 parsed_entries.append(ApachLogEntry(line))
             except:
+                # Most of these errors occur to IPv6 formatting.  Since this is such a small percentage of cases (in 11/2020) I didn't bother complicating the regex even further to handle them.
                 print("Error occurred while running log parsing regex")
             
     logs = pd.DataFrame.from_records([s.to_dict() for s in parsed_entries])
@@ -93,7 +93,9 @@ def WriteToExclusionList(exclusion_list,new_entries):
     new_exclusion_list.to_pickle("exclusion_list.pkl")
 
 if __name__ == "__main__":
-    DownloadAccessLog()
+    yesterday = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+    DownloadAccessLog(yesterday)
+    
     exclusion_list = ReadInExclusionList()
     logs = FilterNew404s(exclusion_list)
     if len(logs.index) > 0:
