@@ -61,20 +61,35 @@ def FilterNew404s(exclusion_list):
     
     logs_404s = logs[logs["status_code"] == "404"]
 
-    try:
-        # exclude entries already previously emailed
-        new_logs_404s = logs_404s[~logs_404s.url.isin(exclusion_list.url)]
-    except:
-        new_logs_404s = logs_404s
+    # match if url matches new url pattern
+    new_url_pattern_404s = logs_404s[logs_404s.url.str.contains('^ ?\/posts\/.*?(?<!feed\/) HTTP\/1.1$')]
 
-    return new_logs_404s
+    # match if url matches old url pattern
+    old_url_pattern_404s = logs_404s[logs_404s.url.str.contains('^ ?\/\d{4}\/\d{2}\/\d{2}/.*?(?<!feed\/) HTTP\/1.1$')]
 
-def SendEmail(logs):
+    # This results in a TON of entries.  we rank these last
+    # try:
+    #     # exclude entries already previously emailed
+    #     new_logs_404s = logs_404s[~logs_404s.url.isin(exclusion_list.url)]
+    # except:
+    new_logs_404s = logs_404s
+
+    return new_url_pattern_404s, old_url_pattern_404s, new_logs_404s
+
+def SendEmail(logs_new_pattern,logs_old_pattern,logs_unmatched):
     SUBJECT = 'Daily BertWagner.com 404s'
     
     TEXT = ''
-    
-    for url in logs["url"].unique():
+    TEXT += '\n\n\n\n NEW URL FAILURES:\n=============================\n\n'
+    for url in logs_new_pattern["url"].unique():
+        TEXT += url + '\n'
+
+    TEXT += '\n\n\n\n OLD URL FAILURES:\n=============================\n\n'
+    for url in logs_old_pattern["url"].unique():
+        TEXT += url + '\n'
+
+    TEXT += '\n\n\n\n THE UNFILTERED MASSES:\n=============================\n\n'
+    for url in logs_unmatched["url"].unique():
         TEXT += url + '\n'
 
     message = """From: %s\nTo: %s\nSubject: %s\n\n%s
@@ -93,13 +108,13 @@ def WriteToExclusionList(exclusion_list,new_entries):
     new_exclusion_list.to_pickle("exclusion_list.pkl")
 
 if __name__ == "__main__":
-    yesterday = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
-    DownloadAccessLog(yesterday)
+    # yesterday = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+    # DownloadAccessLog(yesterday)
     
     exclusion_list = ReadInExclusionList()
-    logs = FilterNew404s(exclusion_list)
-    if len(logs.index) > 0:
-        SendEmail(logs)
-        WriteToExclusionList(exclusion_list,logs)
+    logs_new_pattern,logs_old_pattern,logs_unmatched = FilterNew404s(exclusion_list)
+    if len(logs_unmatched.index) > 0:
+        SendEmail(logs_new_pattern,logs_old_pattern,logs_unmatched)
+        #WriteToExclusionList(exclusion_list,logs_unmatched)
 
     
