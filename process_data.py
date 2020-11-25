@@ -108,8 +108,8 @@ def WriteToExclusionList(exclusion_list,new_entries):
     new_exclusion_list.to_pickle("exclusion_list.pkl")
 
 if __name__ == "__main__":
-    # yesterday = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
-    # DownloadAccessLog(yesterday)
+    yesterday = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+    DownloadAccessLog(yesterday)
     
     exclusion_list = ReadInExclusionList()
     logs_new_pattern,logs_old_pattern,logs_unmatched = FilterNew404s(exclusion_list)
