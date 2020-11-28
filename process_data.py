@@ -14,14 +14,14 @@ TO = [os.environ["apache_404_monitor_email_to"]]
 
 class ApachLogEntry(object):
     def __init__(self, raw_entry):
-        match = re.search(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}).*?"(GET|POST|HEAD|PUT|DELETE|CONNECT|OPTIONS|TRACE|PATCH)(.*?)" (\d{3}) (\d{1,10}) "(.*?)" "(.*?)"',raw_entry)
+        match = re.search(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}).*?"(GET|POST|HEAD|PUT|DELETE|CONNECT|OPTIONS|TRACE|PATCH)(.*?) (HTTP/\d{1}.\d{1})" (\d{3}) (\d{1,10}) "(.*?)" "(.*?)"',raw_entry)
         self.ip = match.group(1)
         self.verb = match.group(2)
         self.url = match.group(3)
-        self.status_code = match.group(4)
-        self.size = match.group(5)
-        self.referrer = match.group(6)
-        self.user_agent = match.group(7)
+        self.status_code = match.group(5)
+        self.size = match.group(6)
+        self.referrer = match.group(7)
+        self.user_agent = match.group(8)
         self.raw = raw_entry
     
     def to_dict(self):
@@ -113,6 +113,8 @@ if __name__ == "__main__":
     
     exclusion_list = ReadInExclusionList()
     logs_new_pattern,logs_old_pattern,logs_unmatched = FilterNew404s(exclusion_list)
+    #WriteNew404s()
+    #EmailReoccurances()
     if len(logs_unmatched.index) > 0:
         SendEmail(logs_new_pattern,logs_old_pattern,logs_unmatched)
         #WriteToExclusionList(exclusion_list,logs_unmatched)
