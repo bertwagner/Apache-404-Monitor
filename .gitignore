@@ -2,3 +2,4 @@
 .vscode/
 access.log
 exclusion_list.pkl
+Logs.db

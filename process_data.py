@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from datetime import timedelta 
+import sqlite3
 
 FROM = os.environ["apache_404_monitor_email_from"]
 FROM_PASSWORD = os.environ["apache_404_monitor_password"]
@@ -76,10 +77,42 @@ def FilterNew404s(exclusion_list):
 
     return new_url_pattern_404s, old_url_pattern_404s, new_logs_404s
 
-def SendEmail(logs_new_pattern,logs_old_pattern,logs_unmatched):
+def InsertLogs(log_date,logs):
+    conn = sqlite3.connect('Logs.db')
+    c = conn.cursor()
+    
+    for index,row in logs.iterrows():
+        parms = (log_date,row["url"],0,row["ip"],row["verb"],row["status_code"],row["size"],row["referrer"],row["raw"])
+        c.execute("INSERT INTO Log404 (LogDate,URL,ShouldIgnore,IPAddress,Verb,StatusCode,Size,Referrer,Raw) VALUES (?,?,?,?,?,?,?,?,?)",parms)
+
+    conn.commit()
+    conn.close()
+
+def RetrieveReoccuring404s(date, logs):
+    conn = sqlite3.connect('Logs.db')
+
+    parms = [date]
+    df = pd.read_sql_query('''SELECT URL, COUNT(URL) AS Cnt, MAX(ShouldIgnore) AS ShouldIgnore, MAX(LogDate) AS LastLogDate
+                            FROM Log404
+                            GROUP BY URL
+                            HAVING 
+                                COUNT(URL) > 1
+                                AND MAX(LogDate) >= ?
+                                AND MAX(SHouldIgnore) = 0
+                            ORDER BY Cnt desc''', conn, params=parms)
+
+    conn.close()
+
+    return df
+
+def SendEmail(logs_new_pattern,logs_old_pattern,logs_unmatched, reoccuring_404s):
     SUBJECT = 'Daily BertWagner.com 404s'
     
     TEXT = ''
+    TEXT += '\n\n\n\n REOCCURING FAILURES:\n=============================\n\n'
+    for index,row in reoccuring_404s.iterrows():
+        TEXT += row["URL"] + ', Count: '+str(row["Cnt"])+  '\n'
+    
     TEXT += '\n\n\n\n NEW URL FAILURES:\n=============================\n\n'
     for url in logs_new_pattern["url"].unique():
         TEXT += url + '\n'
@@ -113,10 +146,10 @@ if __name__ == "__main__":
     
     exclusion_list = ReadInExclusionList()
     logs_new_pattern,logs_old_pattern,logs_unmatched = FilterNew404s(exclusion_list)
-    #WriteNew404s()
-    #EmailReoccurances()
+    InsertLogs(yesterday,logs_unmatched)
+    reoccuring_404s = RetrieveReoccuring404s(yesterday, logs_unmatched)
     if len(logs_unmatched.index) > 0:
-        SendEmail(logs_new_pattern,logs_old_pattern,logs_unmatched)
+        SendEmail(logs_new_pattern,logs_old_pattern,logs_unmatched, reoccuring_404s)
         #WriteToExclusionList(exclusion_list,logs_unmatched)
 
     
