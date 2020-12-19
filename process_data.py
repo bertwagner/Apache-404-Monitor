@@ -29,7 +29,7 @@ class ApachLogEntry(object):
         return {
             'ip':self.ip,
             'verb':self.verb,
-            'url':self.url,
+            'url':self.url.strip(),
             'status_code':self.status_code,
             'size':self.size,
             'referrer':self.referrer,
@@ -38,13 +38,6 @@ class ApachLogEntry(object):
         }
 def DownloadAccessLog(log_date):
     subprocess.run(["scp", f"bertwagner@bertwagner.com:~/logs/bertwagner.com/https/access.log.{log_date}", "./access.log"])
-
-def ReadInExclusionList():
-    try:
-        exclusion_list = pd.read_pickle("exclusion_list.pkl")
-        return exclusion_list
-    except Exception as e:
-        return pd.DataFrame()
 
 def FilterNew404s(exclusion_list):
 
@@ -68,12 +61,11 @@ def FilterNew404s(exclusion_list):
     # match if url matches old url pattern
     old_url_pattern_404s = logs_404s[logs_404s.url.str.contains('^ ?\/\d{4}\/\d{2}\/\d{2}/.*?(?<!feed\/) HTTP\/1.1$')]
 
-    # This results in a TON of entries.  we rank these last
-    # try:
-    #     # exclude entries already previously emailed
-    #     new_logs_404s = logs_404s[~logs_404s.url.isin(exclusion_list.url)]
-    # except:
+    
     new_logs_404s = logs_404s
+    # Filter out URLs ending in /feed/ or start with /tag/
+    new_logs_404s = new_logs_404s[~new_logs_404s.url.str.contains('.*?/feed/')]
+    new_logs_404s = new_logs_404s[~new_logs_404s.url.str.contains('/tag/.*')]
 
     return new_url_pattern_404s, old_url_pattern_404s, new_logs_404s
 
@@ -135,21 +127,14 @@ def SendEmail(logs_new_pattern,logs_old_pattern,logs_unmatched, reoccuring_404s)
     server.sendmail(FROM, TO, message)
     server.close()
 
-def WriteToExclusionList(exclusion_list,new_entries):
-    # We don't want these same URLs to appear in future reports, so we add them to the block list
-    new_exclusion_list = pd.concat([exclusion_list,new_entries])
-    new_exclusion_list.to_pickle("exclusion_list.pkl")
-
 if __name__ == "__main__":
     yesterday = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
     DownloadAccessLog(yesterday)
     
-    exclusion_list = ReadInExclusionList()
     logs_new_pattern,logs_old_pattern,logs_unmatched = FilterNew404s(exclusion_list)
     InsertLogs(yesterday,logs_unmatched)
     reoccuring_404s = RetrieveReoccuring404s(yesterday, logs_unmatched)
     if len(logs_unmatched.index) > 0:
         SendEmail(logs_new_pattern,logs_old_pattern,logs_unmatched, reoccuring_404s)
-        #WriteToExclusionList(exclusion_list,logs_unmatched)
 
     
